@@ -1060,6 +1060,7 @@ contract Akkumulate is Context, IKRC20, Ownable {
             uint256 burnBalance = contractTokenBalance.mul(_burnFeePercentage).div(100);
             uint256 otherBalance = contractTokenBalance.sub(liquidityBalance).sub(burnBalance);
             _balance[_burnAddress] = _balance[_burnAddress].add(burnBalance);
+            contractTokenBalance = 0;
             
             // Split the liquidity balance into halves
             uint256 half = liquidityBalance.div(2);
@@ -1082,13 +1083,15 @@ contract Akkumulate is Context, IKRC20, Ownable {
         _competitionWinnings = _competitionWinnings.add(competitionBalance);
         
         if (block.timestamp >= _competitionEndTime) {
-            // send winnings to winner - winnings will only be zero if no transactions have been made in an hour
-            if (_competitionWinnings > 0) {
-                payable(_currentLeader.rewardAddress).sendValue(_competitionWinnings);
-                emit CompetitionWinnerPaid (_currentLeader.rewardAddress, _competitionWinnings);
+            // send winnings to winner if they're not blacklisted - winnings will only be zero if no transactions have been made in an hour
+            // if the winner is blacklisted the prize pot rolls over
+            if (_competitionWinnings > 0 && !_currentLeader.blacklist) {
+                uint256 competitionWinnings = _competitionWinnings;
+                _competitionWinnings = 0;
+                payable(_currentLeader.rewardAddress).sendValue(competitionWinnings);
+                emit CompetitionWinnerPaid (_currentLeader.rewardAddress, competitionWinnings);
             }
-                
-            _competitionWinnings = 0;
+
             // set new competition time
             _competitionEndTime = block.timestamp + _competitionLength;
             emit NewCompetitionStarted (_competitionEndTime);
@@ -1157,7 +1160,7 @@ contract Akkumulate is Context, IKRC20, Ownable {
             trader = sender;
             amm = recipient;
         }
-        
+            
         // Only allow the account to transfer if they are not blacklisted
         require (!_tradingStats[trader].blacklist, "Blacklisted");
         
