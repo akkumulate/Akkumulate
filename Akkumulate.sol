@@ -911,7 +911,7 @@ contract Akkumulate is Context, IKRC20, Ownable {
         emit PlatformWalletUpdated (newWallet);
     }
 
-    // Allows the platform development wallet address to be changed
+    // Allows blacklisting (and un-blacklisting) of suspected bot addresses
     function setAddressBlacklisting (address account, bool blacklisted) external {
         require (_msgSender() == _feeSetter, "Only accessible by feeSetter");
         require (account != address(0), "Cannot blacklist the zero address");
@@ -1157,7 +1157,8 @@ contract Akkumulate is Context, IKRC20, Ownable {
             trader = sender;
             amm = recipient;
         }
-            
+        
+        // Only allow the account to transfer if they are not blacklisted
         require (!_tradingStats[trader].blacklist, "Blacklisted");
         
         uint256 transferAmount = _getTransferAmount (amount);
